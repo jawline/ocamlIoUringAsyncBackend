@@ -1,0 +1,3 @@
+(library (name async_io_uring)
+ (libraries core async_kernel async_rpc_kernel io_uring uri uri-sexp)
+ (preprocess (pps ppx_jane)))
