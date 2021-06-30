@@ -14,7 +14,3 @@ val yield : unit -> unit Deferred.t
 val init : unit -> unit
 
 val initialized : unit -> bool
-
-(**/**)
-
-val document_loaded : unit -> unit Deferred.t

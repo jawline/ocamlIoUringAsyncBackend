@@ -22,8 +22,6 @@ let run =
   end
   in
   let state = ref State.Idle in
-  let timeouts = Stack.create () in
-  let run_after ~f ~ms = ignore (Dom_html.setTimeout f ms : Dom_html.timeout_id_safe) in
   let rec loop () =
     let t = Scheduler.t () in
     match !state, Scheduler.uncaught_exn t with
@@ -45,46 +43,19 @@ let run =
       in
       Option.iter (Scheduler.uncaught_exn_unwrapped t) ~f:(fun (exn, _sexp) ->
         match Async_kernel.Monitor.extract_exn exn with
-        | Js.Error err -> Js.raise_js_error err
-        | exn ->
-          (match extract_js_error exn with
-           | None -> raise exn
-           | Some err ->
-             (* Hack to get a better backtrace *)
-             (* We first output the stringified ocaml exception *)
-             Firebug.console##error (Js.string (Exn.to_string exn));
-             (* And then raise the embedded javascript error that provides a proper
-                backtrace with good sourcemap support.
-                The name of this javascript error is probably not meaningful which is why
-                we first output the serialization of ocaml exception. *)
-             Js.raise_js_error err));
+        | exn -> raise exn);
       (match next_wakeup with
        | No_wakeup -> state := Idle
-       | Soon ->
+       | Soon  | At _ (* (_at, _dm_ms) *)->
          state := Will_run_soon;
-         run_after ~f:loop ~ms:0.
-       | At (at, d_ms) ->
-         state := Idle;
-         if Stack.is_empty timeouts || Time_ns.( < ) at (Stack.top_exn timeouts)
-         then (
-           Stack.push timeouts at;
-           run_after ~f:run_timeout ~ms:d_ms))
-  and run_timeout () =
-    (* Each call to [run_timeout] removes exactly one element from [timeouts].  This
-       maintains the invariant that [Stack.length timeouts] is exactly the number of
-       outstanding timeouts we have registered. *)
-    ignore (Stack.pop_exn timeouts : Time_ns.t);
-    loop ()
+         loop ())
   in
   fun () ->
     match !state with
     | State.Idle ->
-      run_after ~f:loop ~ms:0.;
-      state := State.Will_run_soon
+      state := State.Will_run_soon;
+      loop ();
     | State.Running | State.Will_run_soon -> ()
-;;
-
-let log name exn = raise_s [%message (exn : bool)]
 ;;
 
 let initialized_ref = ref false
@@ -96,10 +67,9 @@ let initialization =
      Scheduler.set_job_queued_hook t (fun _ -> run ());
      Scheduler.set_event_added_hook t (fun _ -> run ());
      Scheduler.set_thread_safe_external_job_hook t run;
-     Async_kernel.Monitor.Expert.try_with_log_exn := log "Async_kernel: Monitor.try_with";
      Async_kernel.Monitor.detach_and_iter_errors
        Async_kernel.Monitor.main
-       ~f:(log "Async_kernel: Unhandled exception");
+       ~f:(fun _exn -> ());
      run ())
 ;;
 
