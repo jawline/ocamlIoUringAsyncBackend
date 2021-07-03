@@ -1,3 +1,5 @@
-(executable (name demo)
+(executable
+ (name demo)
  (libraries core async_io_uring)
- (preprocess (pps ppx_jane)))
+ (preprocess
+  (pps ppx_jane)))

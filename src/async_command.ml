@@ -1,11 +1,11 @@
 open Core
 include Core.Command
+open Async_kernel
 
 type 'a with_options = ?extract_exn:bool -> 'a
 
 let shutdown_with_error e =
-  Caml.at_exit (fun () ->
-    Core.prerr_endline (Error.to_string_hum e));
+  Caml.at_exit (fun () -> Core.prerr_endline (Error.to_string_hum e));
   Async.shutdown 1
 ;;
 
@@ -14,16 +14,19 @@ let maybe_print_error_and_shutdown = function
   | Error e -> shutdown_with_error e
 ;;
 
-let in_async ?extract_exn:_ param _on_result =
+let in_async ?extract_exn param on_result =
   Param.map param ~f:(fun staged_main () ->
-    let main = Or_error.try_with (fun () -> unstage (staged_main ())) in
-    match main with
-    | Error e ->
-      shutdown_with_error e;
-      Async_io0.run ()
-    | Ok _main ->
-      (Async_io0.run ())
-  )
+      let main = Or_error.try_with (fun () -> unstage (staged_main ())) in
+      match main with
+      | Error e ->
+        shutdown_with_error e;
+        Async_io0.run ()
+      | Ok main ->
+        upon
+          (Deferred.Or_error.try_with ~run:`Schedule ?extract_exn (fun () ->
+               main `Scheduler_started))
+          on_result;
+        Async_io0.run ())
 ;;
 
 type 'r staged = ([ `Scheduler_started ] -> 'r) Staged.t

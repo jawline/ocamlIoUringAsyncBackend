@@ -1,6 +1,5 @@
 open Core
 include Async_kernel
-
 module Time_ns = Core.Time_ns
 module Clock_ns = Async_kernel.Clock_ns
 module Scheduler = Async_kernel.Async_kernel_scheduler.Private
@@ -26,10 +25,9 @@ let run () =
   in
   let state = ref State.Idle in
   let rec loop () =
-    printf "Me looping\n";
     let t = Scheduler.t () in
     match !state, Scheduler.uncaught_exn t with
-    | _, Some _ | State.Running, None -> printf "Stop?\n";
+    | _, Some _ | State.Running, None -> printf "Stop?\n"
     | (State.Idle | State.Will_run_soon), None ->
       state := State.Running;
       Scheduler.run_cycle t;
@@ -47,13 +45,16 @@ let run () =
       in
       Option.iter (Scheduler.uncaught_exn_unwrapped t) ~f:(fun (exn, _sexp) -> raise exn);
       (match next_wakeup with
-       | No_wakeup -> printf "I was told to stop forever\n"; state := Idle
-       | Soon  | At _ (* (_at, _dm_ms) *)->
-         state := Will_run_soon;
-         loop ())
+      | No_wakeup ->
+        state := Idle;
+        Ring.wait Ring.global;
+        loop ()
+      | Soon | At _ (* (_at, _dm_ms) *) ->
+        state := Will_run_soon;
+        loop ())
   in
-      state := State.Will_run_soon;
-      loop ();
+  state := State.Will_run_soon;
+  loop ()
 ;;
 
 let initialized_ref = ref false
@@ -65,9 +66,8 @@ let initialization =
      Scheduler.set_job_queued_hook t (fun _ -> ());
      Scheduler.set_event_added_hook t (fun _ -> ());
      Scheduler.set_thread_safe_external_job_hook t (fun _ -> ());
-     Async_kernel.Monitor.detach_and_iter_errors
-       Async_kernel.Monitor.main
-       ~f:(fun _exn -> ());
+     Async_kernel.Monitor.detach_and_iter_errors Async_kernel.Monitor.main ~f:(fun _exn ->
+         ());
      run ())
 ;;
 
