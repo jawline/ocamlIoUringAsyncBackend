@@ -1,24 +1,11 @@
 open Core
 open Async_kernel
 
-type t =
-  { fd : Fd.t
-  ; mutable buf : Bigstring.t
-  }
+type t = { fd : Fd.t }
 
-let create ?buf_len fd =
-  let buf_len =
-    match buf_len with
-    | None -> 128 * 1024
-    | Some buf_len ->
-      if buf_len > 0
-      then buf_len
-      else
-        raise_s
-          [%message "Reader.create got non positive buf_len" (buf_len : int) (fd : int)]
-  and fd = Fd.of_unix_fd fd in
-  let buf = Bigstring.create buf_len in
-  { fd; buf }
+let create fd =
+  let fd = Fd.of_unix_fd fd in
+  { fd }
 ;;
 
 let open_file filename =
@@ -30,7 +17,7 @@ let open_file filename =
        Ring.global.ring
        Io_uring.Sqe_flags.none
        ~filepath:filename
-       ~flags:0
+       ~flags:1
        ~mode:0
        open_buffer
        (fun result_fd _flags ->
@@ -42,20 +29,20 @@ let open_file filename =
   Ivar.read new_ivar
 ;;
 
-let read t size =
+let write t buffer size =
   let new_ivar = Ivar.create () in
   if Io_uring.prepare_read
        Ring.global.ring
        Io_uring.Sqe_flags.none
        t.fd.unix_fd
-       t.buf
+       buffer
        ~len:size
        ~offset:(-1)
        (fun result _flags ->
-         if result = 0
-         then Ivar.fill new_ivar `Eof
-         else Ivar.fill new_ivar (`Ok (result, t.buf));
+         if result = -1
+         then Ivar.fill new_ivar `Error
+         else Ivar.fill new_ivar (`Ok result);
          ())
-  then raise_s [%message "could not schedule read"];
+  then raise_s [%message "could not schedule write"];
   Ivar.read new_ivar
 ;;

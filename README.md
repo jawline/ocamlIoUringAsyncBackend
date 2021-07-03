@@ -6,4 +6,5 @@ An attempt to build an IO uring scheduler using Async. This is a very simple imp
 
 - Async_command clone so Command can be used
 - Basic scheduler
-- File IO demo working 
+- File IO demo working
+- Async vs Io_uring file size check tester (Shows 100% improvement in a hot cache)

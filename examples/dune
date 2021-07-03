@@ -1,5 +1,13 @@
 (executable
- (name demo)
+ (name demo_uring)
  (libraries core async_io_uring)
+ (modules demo_uring)
+ (preprocess
+  (pps ppx_jane)))
+
+(executable
+ (name demo_std)
+ (libraries core async)
+ (modules demo_std)
  (preprocess
   (pps ppx_jane)))
