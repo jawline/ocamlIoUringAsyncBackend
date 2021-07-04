@@ -9,7 +9,7 @@ type t =
 let create ?buf_len fd =
   let buf_len =
     match buf_len with
-    | None -> 128 * 1024
+    | None -> 1024 * 1024 * 2
     | Some buf_len ->
       if buf_len > 0
       then buf_len
@@ -33,7 +33,7 @@ let open_file filename =
        ~flags:0
        ~mode:0
        open_buffer
-       (fun result_fd _flags ->
+       (open_buffer, fun result_fd _flags ->
          if result_fd < 0
          then raise_s [%message "file failed to open"]
          else Ivar.fill new_ivar (create result_fd);
@@ -51,7 +51,7 @@ let read t size =
        t.buf
        ~len:size
        ~offset:(-1)
-       (fun result _flags ->
+       (t.buf, fun result _flags ->
          if result = 0
          then Ivar.fill new_ivar `Eof
          else Ivar.fill new_ivar (`Ok (result, t.buf));

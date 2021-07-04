@@ -15,7 +15,7 @@ let run filepath outpath =
       return ()
     | `Ok bytes_count ->
       count := !count + bytes_count;
-      Writer.write_bytes writer byte_data;
+      Writer.write_bytes writer byte_data ~len:bytes_count;
       read_loop ()
   in
   read_loop ()

@@ -1,6 +1,6 @@
 open Core
 
-type t = { ring : (int -> int -> unit) Io_uring.t }
+type t = { ring : (Bigstring.t * (int -> int -> unit)) Io_uring.t }
 
 let make ~ring_size =
   { ring =
@@ -14,10 +14,10 @@ let wait t =
   ignore (Io_uring.submit t.ring : int);
   Stdio.Out_channel.flush Stdio.Out_channel.stdout;
   Io_uring.wait t.ring ~timeout:`Never;
-  Io_uring.iter_completions t.ring ~f:(fun ~user_data ~res ~flags -> user_data res flags);
+  Io_uring.iter_completions t.ring ~f:(fun ~user_data ~res ~flags -> let (_, callback) = user_data in callback res flags);
   Io_uring.clear_completions t.ring;
   Stdio.Out_channel.flush Stdio.Out_channel.stdout;
   ()
 ;;
 
-let global = make ~ring_size:1024
+let global = make ~ring_size:(1024 * 8)

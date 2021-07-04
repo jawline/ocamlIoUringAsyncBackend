@@ -7,14 +7,12 @@ let run filepath out_filepath =
   printf "Determined!\n";
   let count = ref 0 in
   let rec read_loop () =
-    let%bind data = Reader.read reader (128 * 1024) in
+    let%bind data = Reader.read reader (1024 * 1024 * 2) in
     match data with
-    | `Eof ->
-      printf "<<< EOF %i\n" !count;
-      return ()
+    | `Eof -> printf "Done\n"; return ()
     | `Ok (bytes_count, buffer) ->
       count := !count + bytes_count;
-      let%bind _written_bytes = Writer.write writer buffer bytes_count in
+      upon (Writer.safe_write writer buffer bytes_count) (fun written_bytes -> match written_bytes with | `Error -> raise_s [%message "something went wrong"] | `Ok _written -> ());
       read_loop ()
   in
   read_loop ()
