@@ -9,7 +9,7 @@ type t =
 let create ?buf_len fd =
   let buf_len =
     match buf_len with
-    | None -> 1024 * 1024 * 2
+    | None -> 1024 * 128
     | Some buf_len ->
       if buf_len > 0
       then buf_len
@@ -21,7 +21,7 @@ let create ?buf_len fd =
   { fd; buf }
 ;;
 
-let open_file filename =
+let open_file ?buf_len filename =
   (* This deferred will fill when the io uring closure executes *)
   let new_ivar = Ivar.create () in
   (* This buffer must not be garbage collected until the open is processed *)
@@ -36,7 +36,7 @@ let open_file filename =
        (open_buffer, fun result_fd _flags ->
          if result_fd < 0
          then raise_s [%message "file failed to open"]
-         else Ivar.fill new_ivar (create result_fd);
+         else Ivar.fill new_ivar (create ?buf_len result_fd);
          ())
   then raise_s [%message "Could not schedule open"];
   Ivar.read new_ivar

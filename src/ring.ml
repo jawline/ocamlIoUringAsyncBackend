@@ -20,4 +20,4 @@ let wait t =
   ()
 ;;
 
-let global = make ~ring_size:(1024 * 8)
+let global = make ~ring_size:(1024 * 4)

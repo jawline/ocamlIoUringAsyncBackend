@@ -17,8 +17,8 @@ let open_file filename =
        Ring.global.ring
        Io_uring.Sqe_flags.none
        ~filepath:filename
-       ~flags: (0x1 lor 0x1000 lor 0x2000)
-       ~mode:0
+       ~flags: (1 lor 64 lor 512)
+       ~mode:777
        open_buffer
        (open_buffer, fun result_fd _flags ->
          if result_fd < 0

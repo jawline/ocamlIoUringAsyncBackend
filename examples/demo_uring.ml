@@ -1,13 +1,14 @@
 open Core
 open Async_io_uring
 
-let run filepath out_filepath =
-  let%bind reader = Reader.open_file filepath in
+let cp filepath out_filepath =
+  let block_size = 1024 * 32 in
+  let%bind reader = Reader.open_file ~buf_len:block_size filepath in
   let%bind writer = Writer.open_file out_filepath in
   printf "Determined!\n";
   let count = ref 0 in
   let rec read_loop () =
-    let%bind data = Reader.read reader (1024 * 1024 * 2) in
+    let%bind data = Reader.read reader block_size in
     match data with
     | `Eof -> printf "Done\n"; return ()
     | `Ok (bytes_count, buffer) ->
@@ -18,12 +19,34 @@ let run filepath out_filepath =
   read_loop ()
 ;;
 
+let rec crc accum data idx size =
+  if idx = size then accum else crc (accum + (Char.to_int (Bigstring.get data idx))) data (idx + 1) size;;
+
+let count filepath =
+  let block_size = 1024 * 32 in
+  let%bind reader = Reader.open_file ~buf_len:block_size filepath in
+  printf "Determined!\n";
+  let count = ref 0 in
+  let crc_accum = ref 0 in
+  let rec read_loop () =
+    let%bind data = Reader.read reader block_size in
+    match data with
+    | `Eof -> printf "Done\n"; return ()
+    | `Ok (bytes_count, buffer) ->
+      crc_accum := crc !crc_accum buffer 0 bytes_count;
+      count := !count + bytes_count;
+      read_loop ()
+  in
+  read_loop ()
+;;
+
 let () =
   Command.async
-    ~summary:"Start an echo server"
+    ~summary:""
     Command.Let_syntax.(
       let%map_open filepath = flag "-path" (required string) ~doc:"path to load"
-      and out_filepath = flag "-outpath" (required string) ~doc:"path to write" in
-      fun () -> run filepath out_filepath)
+      and out_filepath = flag "-outpath" (required string) ~doc:"path to write"
+          and no_write = flag "-nowrite" no_arg ~doc:"Don't copy the file, instead just count size" in
+      fun () -> if no_write then count filepath else cp filepath out_filepath )
   |> Command.run
 ;;
