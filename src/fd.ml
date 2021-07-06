@@ -1,8 +1,17 @@
 open Core
 
-type t = { unix_fd : Unix.File_descr.t }
+module Fd_kind = struct
+  type t =
+    | File
+    | Socket
+  [@@deriving sexp]
+end
 
-let of_unix_fd unix_fd =
-  let unix_fd = Unix.File_descr.of_int unix_fd in
-  { unix_fd }
-;;
+type t =
+  { kind : Fd_kind.t
+  ; fd : Unix.File_descr.t
+  }
+[@@deriving sexp_of]
+
+let of_file fd = { kind = Fd_kind.File; fd }
+let of_socket fd = { kind = Fd_kind.Socket; fd }

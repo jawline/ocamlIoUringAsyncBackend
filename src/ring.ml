@@ -14,7 +14,9 @@ let wait t =
   ignore (Io_uring.submit t.ring : int);
   Stdio.Out_channel.flush Stdio.Out_channel.stdout;
   Io_uring.wait t.ring ~timeout:`Never;
-  Io_uring.iter_completions t.ring ~f:(fun ~user_data ~res ~flags -> let (_, callback) = user_data in callback res flags);
+  Io_uring.iter_completions t.ring ~f:(fun ~user_data ~res ~flags ->
+      let _, callback = user_data in
+      callback res flags);
   Io_uring.clear_completions t.ring;
   Stdio.Out_channel.flush Stdio.Out_channel.stdout;
   ()

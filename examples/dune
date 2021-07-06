@@ -11,3 +11,10 @@
  (modules demo_std)
  (preprocess
   (pps ppx_jane)))
+
+(executable
+ (name tcp_uring)
+ (libraries core async_io_uring)
+ (modules tcp_uring)
+ (preprocess
+  (pps ppx_jane)))

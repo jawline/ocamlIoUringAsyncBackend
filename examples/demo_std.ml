@@ -11,8 +11,10 @@ let cp filepath out_filepath =
   let rec read_loop () =
     let%bind data = Reader.read reader bytes_buffer in
     match data with
-    | `Eof -> printf "Done\n"; return ()
-    | `Ok (bytes_count) ->
+    | `Eof ->
+      printf "Done\n";
+      return ()
+    | `Ok bytes_count ->
       count := !count + bytes_count;
       Writer.write_bytes writer bytes_buffer ~len:bytes_count;
       read_loop ()
@@ -21,7 +23,10 @@ let cp filepath out_filepath =
 ;;
 
 let rec crc accum data idx size =
-  if idx = size then accum else crc (accum + (Char.to_int (Bytes.get data idx))) data (idx + 1) size;;
+  if idx = size
+  then accum
+  else crc (accum + Char.to_int (Bytes.get data idx)) data (idx + 1) size
+;;
 
 let count filepath =
   let block_size = 1024 * 32 in
@@ -33,8 +38,10 @@ let count filepath =
   let rec read_loop () =
     let%bind data = Reader.read reader buffer_bytes in
     match data with
-    | `Eof -> printf "Done\n"; return ()
-    | `Ok (bytes_count) ->
+    | `Eof ->
+      printf "Done\n";
+      return ()
+    | `Ok bytes_count ->
       crc_accum := crc !crc_accum buffer_bytes 0 bytes_count;
       count := !count + bytes_count;
       read_loop ()
@@ -42,14 +49,15 @@ let count filepath =
   read_loop ()
 ;;
 
-
 let () =
   Command.async
     ~summary:""
     Command.Let_syntax.(
       let%map_open filepath = flag "-path" (required string) ~doc:"path to load"
       and out_filepath = flag "-outpath" (required string) ~doc:"path to write"
-          and no_write = flag "-nowrite" no_arg ~doc:"Don't copy the file, instead just count size" in
-      fun () -> if no_write then count filepath else cp filepath out_filepath )
+      and no_write =
+        flag "-nowrite" no_arg ~doc:"Don't copy the file, instead just count size"
+      in
+      fun () -> if no_write then count filepath else cp filepath out_filepath)
   |> Command.run
 ;;

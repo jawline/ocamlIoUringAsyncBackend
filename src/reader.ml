@@ -6,7 +6,7 @@ type t =
   ; mutable buf : Bigstring.t
   }
 
-let create ?buf_len fd =
+let create ?buf_len (fd : Fd.t) =
   let buf_len =
     match buf_len with
     | None -> 1024 * 128
@@ -15,10 +15,9 @@ let create ?buf_len fd =
       then buf_len
       else
         raise_s
-          [%message "Reader.create got non positive buf_len" (buf_len : int) (fd : int)]
-  and fd = Fd.of_unix_fd fd in
-  let buf = Bigstring.create buf_len in
-  { fd; buf }
+          [%message "Reader.create got non positive buf_len" (buf_len : int) (fd : Fd.t)]
+  in
+  { fd; buf = Bigstring.create buf_len }
 ;;
 
 let open_file ?buf_len filename =
@@ -33,29 +32,51 @@ let open_file ?buf_len filename =
        ~flags:0
        ~mode:0
        open_buffer
-       (open_buffer, fun result_fd _flags ->
-         if result_fd < 0
-         then raise_s [%message "file failed to open"]
-         else Ivar.fill new_ivar (create ?buf_len result_fd);
-         ())
+       ( open_buffer
+       , fun result_fd _flags ->
+           if result_fd < 0
+           then raise_s [%message "file failed to open"]
+           else
+             Ivar.fill
+               new_ivar
+               (create ?buf_len (Fd.of_file (Unix.File_descr.of_int result_fd)));
+           () )
   then raise_s [%message "Could not schedule open"];
   Ivar.read new_ivar
 ;;
 
 let read t size =
   let new_ivar = Ivar.create () in
-  if Io_uring.prepare_read
-       Ring.global.ring
-       Io_uring.Sqe_flags.none
-       t.fd.unix_fd
-       t.buf
-       ~len:size
-       ~offset:(-1)
-       (t.buf, fun result _flags ->
-         if result = 0
-         then Ivar.fill new_ivar `Eof
-         else Ivar.fill new_ivar (`Ok (result, t.buf));
-         ())
-  then raise_s [%message "could not schedule read"];
+  let user_data =
+    ( t.buf
+    , fun result _flags ->
+        if result = 0
+        then Ivar.fill new_ivar `Eof
+        else if result < 0
+        then Ivar.fill new_ivar `Error
+        else Ivar.fill new_ivar (`Ok (result, t.buf));
+        () )
+  in
+  let schedule_result =
+    match t.fd.kind with
+    | File ->
+      Io_uring.prepare_read
+        Ring.global.ring
+        Io_uring.Sqe_flags.none
+        t.fd.fd
+        t.buf
+        ~len:size
+        ~offset:(-1)
+        user_data
+    | Socket ->
+      Io_uring.prepare_recv
+        Ring.global.ring
+        Io_uring.Sqe_flags.none
+        t.fd.fd
+        t.buf
+        ~len:size
+        user_data
+  in
+  if schedule_result then raise_s [%message "could not schedule read"];
   Ivar.read new_ivar
 ;;
