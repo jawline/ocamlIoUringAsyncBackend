@@ -8,3 +8,4 @@ An attempt to build an IO uring scheduler using Async. This is a very simple imp
 - Basic scheduler
 - File IO demo working
 - Async vs Io_uring file size check tester (Shows 100% improvement in a hot cache)
+- Basic TCP support (reader only for now)
