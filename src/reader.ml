@@ -45,7 +45,9 @@ let open_file ?buf_len filename =
   Ivar.read new_ivar
 ;;
 
-let read t size =
+let read t buffer =
+  let len = Bytes.length buffer in
+  let buffer = Substring.create buffer in
   let new_ivar = Ivar.create () in
   let user_data =
     ( t.buf
@@ -54,8 +56,9 @@ let read t size =
         then Ivar.fill new_ivar `Eof
         else if result < 0
         then Ivar.fill new_ivar `Error
-        else Ivar.fill new_ivar (`Ok (result, t.buf));
-        () )
+        else (
+          Substring.blit_from_bigstring buffer ~src:t.buf ~src_pos:0 ~len:result;
+          Ivar.fill new_ivar (`Ok result)) )
   in
   let schedule_result =
     match t.fd.kind with
@@ -65,7 +68,7 @@ let read t size =
         Io_uring.Sqe_flags.none
         t.fd.fd
         t.buf
-        ~len:size
+        ~len
         ~offset:(-1)
         user_data
     | Socket ->
@@ -74,7 +77,7 @@ let read t size =
         Io_uring.Sqe_flags.none
         t.fd.fd
         t.buf
-        ~len:size
+        ~len
         user_data
   in
   if schedule_result then raise_s [%message "could not schedule read"];

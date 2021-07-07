@@ -50,8 +50,8 @@ let write t buffer size =
   Ivar.read new_ivar
 ;;
 
-let safe_write t buffer size =
-  let tmp_buffer = Bigstring.create size in
-  Bigstring.blit ~src:buffer ~src_pos:0 ~dst_pos:0 ~len:size ~dst:tmp_buffer;
-  write t tmp_buffer size
+let write_bytes t buffer ~len =
+  let tmp_buffer = Bigstring.create len in
+  Substring.blit_to_bigstring (Substring.create buffer ~len) ~dst:tmp_buffer ~dst_pos:0;
+  upon (write t tmp_buffer len) (fun _ -> ())
 ;;

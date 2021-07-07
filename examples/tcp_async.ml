@@ -1,5 +1,5 @@
 open Core
-open Async_io_uring
+open Async
 
 let rec crc accum data idx size =
   if idx = size
@@ -17,9 +17,6 @@ let count reader start_time =
   let rec read_loop () =
     let%bind data = Reader.read reader read_buffer in
     match data with
-    | `Error ->
-      printf "Exit with error\n";
-      return ()
     | `Eof ->
       let finish_time = Time_ns.now () in
       let crc = !crc_accum in
@@ -38,9 +35,9 @@ let count reader start_time =
 let start_server port =
   let%bind _server =
     Tcp.Server.create
-      ~on_handler_error:(fun () -> raise_s [%message "error"])
-      (Unix.Inet_addr.localhost, port)
-      (fun reader _writer -> upon (count reader (Time_ns.now ())) (fun () -> ()))
+      ~on_handler_error:`Raise
+      (Tcp.Where_to_listen.of_port port)
+      (fun _address reader _writer -> count reader (Time_ns.now ()))
   in
   Deferred.never ()
 ;;

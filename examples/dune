@@ -18,3 +18,10 @@
  (modules tcp_uring)
  (preprocess
   (pps ppx_jane)))
+
+(executable
+ (name tcp_async)
+ (libraries core async)
+ (modules tcp_async)
+ (preprocess
+  (pps ppx_jane)))
