@@ -25,7 +25,7 @@ let cp filepath out_filepath =
 let rec crc accum data idx size =
   if idx = size
   then accum
-  else crc (accum + Char.to_int (Bytes.get data idx)) data (idx + 1) size
+  else crc (accum + Char.to_int (Bytes.unsafe_get data idx)) data (idx + 1) size
 ;;
 
 let count filepath =
@@ -39,7 +39,7 @@ let count filepath =
     let%bind data = Reader.read reader buffer_bytes in
     match data with
     | `Eof ->
-      printf "Done\n";
+      print_s [%message "" ~crc:(!crc_accum : int)];
       return ()
     | `Ok bytes_count ->
       crc_accum := crc !crc_accum buffer_bytes 0 bytes_count;
