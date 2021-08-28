@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Cat it once to keep it in caches
+cat $1 > /dev/null
+/usr/bin/time -v cat $1 | nc -N 127.0.0.1 7777
+/usr/bin/time -v cat $1 | nc -N 127.0.0.1 8989

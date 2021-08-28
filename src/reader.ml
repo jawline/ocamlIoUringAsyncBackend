@@ -45,6 +45,20 @@ let open_file ?buf_len filename =
   Ivar.read new_ivar
 ;;
 
+let close t =
+  let new_ivar = Ivar.create () in 
+  if Io_uring.prepare_close
+       Ring.global.ring
+       Io_uring.Sqe_flags.none
+       t.fd.fd
+       (t.buf, fun result_fd _flags ->
+           if result_fd < 0
+           then raise_s [%message "file failed to open"]
+           else Ivar.fill new_ivar `Ok)
+  then raise_s [%message "Could not schedule close"];
+  Ivar.read new_ivar
+;;
+
 let read t buffer =
   let len = Bytes.length buffer in
   let buffer = Substring.create buffer in

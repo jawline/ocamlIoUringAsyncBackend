@@ -25,6 +25,7 @@ let count reader start_time =
       let crc = !crc_accum in
       let time_elapsed = Time_ns.diff finish_time start_time in
       print_s [%message "finish" (crc : int) (time_elapsed : Time_ns.Span.t)];
+      let%bind `Ok = Reader.close reader in
       return ()
     | `Ok bytes_count ->
       crc_accum := crc !crc_accum read_buffer 0 bytes_count;

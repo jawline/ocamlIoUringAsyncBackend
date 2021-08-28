@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+# Do one run before the tests to cache the file
+./_build/default/examples/demo_std.exe -path $1 -outpath $2
+
+touch $2
+/usr/bin/time -v ./_build/default/examples/demo_std.exe -path $1 -outpath $2 -nowrite
+/usr/bin/time -v ./_build/default/examples/demo_uring.exe -path $1 -outpath $2 -nowrite

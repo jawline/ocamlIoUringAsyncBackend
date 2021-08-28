@@ -1,0 +1,9 @@
+#!/usr/bin/bash
+for i in {1..100}
+do
+  tgt=$(($i * 51200))
+  echo "Creating $(($tgt / 1024))"
+  dd if=/dev/urandom of=/tmp/test.dat bs=1024 count="${tgt}"
+  echo "Testing"
+  ./runtest /tmp/test.dat /tmp/out.dat
+done
