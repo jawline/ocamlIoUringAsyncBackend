@@ -34,11 +34,11 @@ import numpy as np
 # Data for plotting
 fig, ax = plt.subplots()
 
-legend = ax.legend()
 ax.plot(np.array(mbs_list), np.array(scores_thread), label = "Async_unix")
 ax.plot(np.array(mbs_list), np.array(scores_uring), label = "io_uring")
 ax.set(xlabel='Filesize (GB)', ylabel='')
 ax.grid()
+legend = ax.legend(loc = "lower right")
 
 fig.set_size_inches(18.5, 6.5)
 fig.savefig('result.png', dpi=300)
